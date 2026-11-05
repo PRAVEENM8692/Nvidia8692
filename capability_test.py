@@ -36,35 +36,37 @@ for m in models:
     print("  ", m)
 print("--- END MODELS ---\n")
 
-# candidate chat models: from the real list, skipping non-chat types
-skip = ("embed", "rerank", "guard", "safety", "retriev", "vision", "vl", "translate",
-        "reward", "parse", "clip", "nemoretriever", "bge", "arctic-embed", "paligemma")
-prefs = ("llama-3.3", "llama-4", "qwen", "mistral", "gemma", "nemotron", "deepseek", "gpt-oss", "kimi")
-chat = [m for m in models if not any(s in m.lower() for s in skip)]
-ordered = [m for p in prefs for m in chat if p in m.lower()]
-seen, candidates = set(), []
-for m in ordered:
-    if m not in seen:
-        seen.add(m)
-        candidates.append(m)
-candidates = candidates[:8]
+preferred = ["google/gemma-4-31b-it", "nvidia/nemotron-3-super-120b-a12b",
+             "nvidia/nemotron-nano-3-30b-a3b", "nvidia/nemotron-3.5-lightning-30b-a3b",
+             "deepseek-ai/deepseek-v4.1-flash", "openai/gpt-oss-20b", "moonshotai/kimi-k2.6",
+             "z-ai/glm-5.3-flash", "minimaxai/minimax-m3.1-flash",
+             "google/gemma-3-12b-it", "nvidia/llama-3.1-nemotron-70b-instruct",
+             "mistralai/mistral-large-4-1t-a52b"]
+candidates = [m for m in preferred if m in models]
 print("Testing chat models:", candidates, "\n")
+working = []
 
 for m in candidates:
     try:
         r = requests.post(
             f"{BASE}/chat/completions", headers=H, timeout=60,
-            json={"model": m, "max_tokens": 200,
+            json={"model": m, "max_tokens": 900,
                   "messages": [{"role": "user",
                                 "content": "குழந்தைகளுக்கான 4 வரி சிறிய தமிழ் கதை எழுது."}]})
         if r.status_code == 200:
             txt = (r.json()["choices"][0]["message"].get("content") or "")
-            report(f"story text: {m}", True)
+            ok_txt = bool(txt.strip())
+            report(f"story text: {m}", ok_txt, "" if ok_txt else "(200 but empty text)")
+            if ok_txt:
+                working.append(m)
             print("     ", txt.replace("\n", " ")[:300], flush=True)
         else:
             report(f"story text: {m}", False, f"HTTP {r.status_code} {r.text[:100]}")
     except Exception as e:
         report(f"story text: {m}", False, str(e)[:120])
+
+open("working_model.txt", "w").write(working[0] if working else "")
+print("\nWorking chat models:", working or "none")
 
 # image generation
 for url, extra in [
