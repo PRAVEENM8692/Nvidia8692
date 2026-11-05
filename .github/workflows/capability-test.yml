@@ -16,6 +16,20 @@ jobs:
         env:
           NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         run: python capability_test.py
+      - name: Run RPM test (45s)
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: |
+          MODEL=$(python - <<'PY'
+          import os, requests
+          h={"Authorization":"Bearer "+os.environ["NVIDIA_API_KEY"]}
+          ms=[m["id"] for m in requests.get("https://integrate.api.nvidia.com/v1/models",headers=h,timeout=30).json()["data"]]
+          pick=[m for m in ms if any(k in m.lower() for k in ("qwen","mistral","gemma","llama","gpt-oss")) and not any(s in m.lower() for s in ("embed","vision","vl","guard","translate","rerank"))]
+          print(pick[0] if pick else "")
+          PY
+          )
+          echo "RPM model: $MODEL"
+          [ -n "$MODEL" ] && python rpm_test.py "$MODEL" 45 || echo "no model for RPM test"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
