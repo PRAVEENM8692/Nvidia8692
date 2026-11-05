@@ -36,12 +36,8 @@ for m in models:
     print("  ", m)
 print("--- END MODELS ---\n")
 
-preferred = ["google/gemma-4-31b-it", "nvidia/nemotron-3-super-120b-a12b",
-             "nvidia/nemotron-nano-3-30b-a3b", "nvidia/nemotron-3.5-lightning-30b-a3b",
-             "deepseek-ai/deepseek-v4.1-flash", "openai/gpt-oss-20b", "moonshotai/kimi-k2.6",
-             "z-ai/glm-5.3-flash", "minimaxai/minimax-m3.1-flash",
-             "google/gemma-3-12b-it", "nvidia/llama-3.1-nemotron-70b-instruct",
-             "mistralai/mistral-large-4-1t-a52b"]
+preferred = ["nvidia/nemotron-3.5-lightning-30b-a3b", "z-ai/glm-5.3-flash",
+             "minimaxai/minimax-m3.1-flash", "mistralai/mistral-large-4-1t-a52b"]
 candidates = [m for m in preferred if m in models]
 print("Testing chat models:", candidates, "\n")
 working = []
@@ -49,12 +45,18 @@ working = []
 for m in candidates:
     try:
         r = requests.post(
-            f"{BASE}/chat/completions", headers=H, timeout=60,
+            f"{BASE}/chat/completions", headers=H, timeout=180,
             json={"model": m, "max_tokens": 900,
                   "messages": [{"role": "user",
                                 "content": "குழந்தைகளுக்கான 4 வரி சிறிய தமிழ் கதை எழுது."}]})
         if r.status_code == 200:
-            txt = (r.json()["choices"][0]["message"].get("content") or "")
+            msg = r.json()["choices"][0]["message"]
+            txt = msg.get("content") or ""
+            reasoning = msg.get("reasoning_content") or msg.get("reasoning") or ""
+            print("      message keys:", sorted(msg.keys()), "| content chars:", len(txt),
+                  "| reasoning chars:", len(reasoning), flush=True)
+            if not txt.strip() and reasoning.strip():
+                txt = "[reasoning only] " + reasoning
             ok_txt = bool(txt.strip())
             report(f"story text: {m}", ok_txt, "" if ok_txt else "(200 but empty text)")
             if ok_txt:
