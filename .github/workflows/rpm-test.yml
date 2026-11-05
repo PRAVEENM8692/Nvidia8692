@@ -1,0 +1,25 @@
+name: NVIDIA RPM test
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Model name (vendor/model)"
+        default: "meta/llama-3.3-70b-instruct"
+      seconds:
+        description: "Test duration in seconds"
+        default: "60"
+
+jobs:
+  rpm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests openai
+      - name: Run RPM test
+        env:
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+        run: python rpm_test.py "${{ inputs.model }}" "${{ inputs.seconds }}"
